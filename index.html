@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STKI Text Preprocessing Suite (Enhanced Engine)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS for XLSX & CSV Parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+</head>
+<body class="min-h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 antialiased flex flex-col md:flex-row transition-colors duration-200">
+
+    <!-- Mobile Overlay Backdrop -->
+    <div id="mobileBackdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="fixed md:sticky top-0 left-0 z-50 w-64 h-screen bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col justify-between transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out shrink-0">
+        
+        <!-- Sidebar Top Logo -->
+        <div class="p-4 border-b border-slate-100 dark:border-slate-700/50">
+            <div class="flex items-center gap-3 px-2">
+                <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div class="truncate">
+                    <h1 class="font-bold text-slate-900 dark:text-white text-base leading-tight truncate">STKI Website</h1>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Pendidikan Teknologi Informasi</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scrollable Navigation Area -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-6">
+            <nav class="space-y-1">
+                <div class="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Modul Utama</div>
+                <button onclick="navTo('preprocessing')" id="nav-preprocessing" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 transition-all">
+                    <i class="fa-solid fa-bolt text-sm w-5 text-center"></i> Preprocessing Teks
+                </button>
+
+                <div class="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mt-4">Konfigurasi</div>
+                <button onclick="navTo('rules')" id="nav-rules" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all">
+                    <i class="fa-solid fa-book-bookmark text-sm w-5 text-center"></i> Kamus & Stopwords
+                </button>
+                <button onclick="navTo('about')" id="nav-about" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all">
+                    <i class="fa-solid fa-circle-info text-sm w-5 text-center"></i> Panduan Tugas
+                </button>
+            </nav>
+        </div>
+
+        <!-- Sidebar Fixed Footer Status -->
+        <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+            <div class="p-3 bg-white dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center gap-2.5 text-xs">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                <span class="text-slate-600 dark:text-slate-300 font-medium truncate">Engine NLP: Optimal</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col min-w-0 min-h-screen">
+
+        <!-- Top Header Navigation Bar -->
+        <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 transition-colors duration-200 h-16 shrink-0">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="md:hidden p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
+                        <i class="fa-solid fa-bars text-base"></i>
+                    </button>
+                    <div id="pageTitle" class="font-bold text-slate-800 dark:text-slate-100 text-sm sm:text-base">Modul Preprocessing Teks (Optimized)</div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleDarkMode()" class="p-2 sm:px-3.5 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-xs font-semibold flex items-center gap-2">
+                        <i id="themeIcon" class="fa-solid fa-moon text-amber-500"></i>
+                        <span id="themeText" class="hidden sm:inline">Mode Gelap</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body Workspace -->
+        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+            <!-- VIEW 1: PREPROCESSING ENGINE -->
+            <div id="view-preprocessing" class="view-content space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col justify-between gap-4 transition-colors duration-200">
+                        <div class="space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <label for="inputText" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                                    <i class="fa-solid fa-align-left text-brand-600 dark:text-brand-400"></i> Input Teks Dokumen
+                                </label>
+                                <select id="sampleSelect" onchange="loadSample()" class="text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-brand-500 focus:outline-none font-medium text-slate-700 dark:text-slate-200">
+                                    <option value="">-- Muat Preset Dataset --</option>
+                                    <option value="1">Data 1: Sistem Informasi & Laboratorium</option>
+                                    <option value="2">Data 2: Pengolahan Bahasa Alami (NLP)</option>
+                                    <option value="3">Data 3: Pencarian Dokumen-Dokumen Digital</option>
+                                    <option value="4">Data 4: Algoritma Kecerdasan Buatan</option>
+                                    <option value="5">Data 5: Pemrograman & Aplikasi Web</option>
+                                </select>
+                            </div>
+
+                            <div id="dropZone" class="border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-brand-500 dark:hover:border-brand-400 rounded-xl p-4 text-center bg-slate-50/50 dark:bg-slate-900/50 transition-all cursor-pointer relative">
+                                <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" class="hidden" onchange="handleFileSelect(event)">
+                                <div onclick="document.getElementById('fileInput').click()" class="space-y-1">
+                                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-brand-600 dark:text-brand-400"></i>
+                                    <p class="text-xs font-semibold text-slate-700 dark:text-slate-200">Klik atau seret file CSV / Excel (.xlsx) ke sini</p>
+                                    <p class="text-[11px] text-slate-400">Format yang didukung: .csv, .xlsx, .xls</p>
+                                </div>
+
+                                <div id="fileMeta" class="hidden mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-left flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300 truncate max-w-[250px]">
+                                        <i class="fa-solid fa-file-csv text-emerald-600 text-base"></i>
+                                        <span id="fileName">dataset.csv</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <label for="columnSelect" class="text-xs font-semibold text-slate-500 dark:text-slate-400">Kolom Teks:</label>
+                                        <select id="columnSelect" onchange="extractSelectedColumn()" class="text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 font-medium text-slate-700 dark:text-slate-200">
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <textarea id="inputText" rows="4" class="w-full p-3.5 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all outline-none resize-none" placeholder="Masukkan teks langsung atau muat dari file di atas..."></textarea>
+                        </div>
+
+                        <div class="flex items-center gap-3 pt-2">
+                            <button onclick="processText()" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-sm transition-all shadow-sm active:scale-[0.98]">
+                                <i class="fa-solid fa-bolt"></i> Jalankan Preprocessing
+                            </button>
+                            <button onclick="resetForm()" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 rounded-xl font-semibold text-sm transition-all">
+                                <i class="fa-solid fa-rotate-left"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col justify-between transition-colors duration-200">
+                        <div class="space-y-4">
+                            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                                <i class="fa-solid fa-sliders text-brand-600 dark:text-brand-400"></i> Custom Stopwords
+                            </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Tambahkan kata khusus (dipisahkan koma) yang ingin dibuang secara manual saat proses filtering.
+                            </p>
+                            <div>
+                                <label for="customStopwords" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Kata Tambahan</label>
+                                <input type="text" id="customStopwords" placeholder="Contoh: laboratorium, kampus, senin" class="w-full px-3.5 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-brand-500 outline-none transition-all">
+                            </div>
+                        </div>
+                        <div class="pt-4 border-t border-slate-100 dark:border-slate-700/60 mt-4">
+                            <div class="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                                <i class="fa-solid fa-shield-halved text-emerald-500"></i> Stopword Standar Sastrawi ID Active
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="emptyState" class="bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center my-8 transition-colors duration-200">
+                    <div class="w-16 h-16 bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+                        <i class="fa-solid fa-terminal"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-700 dark:text-slate-200 text-base mb-1">Belum Ada Data yang Diproses</h3>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 max-w-sm mx-auto">Silakan pilih preset dataset, unggah file CSV/Excel, atau ketik teks pilihan Anda, lalu klik "Jalankan Preprocessing".</p>
+                </div>
+
+                <div id="outputSection" class="hidden space-y-6">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Token Awal</div>
+                            <div class="text-2xl font-black text-slate-800 dark:text-slate-100" id="statInitial">0</div>
+                            <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Sebelum pembersihan</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Term Akhir</div>
+                            <div class="text-2xl font-black text-brand-600 dark:text-brand-400" id="statFinal">0</div>
+                            <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Hasil kata dasar</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Tingkat Reduksi</div>
+                            <div class="text-2xl font-black text-emerald-600 dark:text-emerald-400" id="statReduction">0%</div>
+                            <div class="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1"><i class="fa-solid fa-arrow-down-long"></i> Efisiensi token</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Kata Didekomposisi</div>
+                            <div class="text-2xl font-black text-amber-500 dark:text-amber-400" id="statChanged">0</div>
+                            <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Imbuhan terhapus</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                        <div class="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 px-6 pt-3 gap-2 overflow-x-auto">
+                            <button onclick="switchTab('pipeline')" id="tab-pipeline" class="px-4 py-2.5 text-xs font-bold rounded-t-xl border-b-2 border-brand-600 dark:border-brand-400 text-brand-600 dark:text-brand-400 flex items-center gap-2 bg-white dark:bg-slate-800">
+                                <i class="fa-solid fa-diagram-project"></i> Visual Pipeline
+                            </button>
+                            <button onclick="switchTab('tf')" id="tab-tf" class="px-4 py-2.5 text-xs font-bold rounded-t-xl border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-simple"></i> Term Frequency (TF)
+                            </button>
+                            <button onclick="switchTab('logs')" id="tab-logs" class="px-4 py-2.5 text-xs font-bold rounded-t-xl border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-2">
+                                <i class="fa-solid fa-list-check"></i> Processing Log Detail
+                            </button>
+                        </div>
+
+                        <div class="p-6">
+                            <div id="content-pipeline" class="space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 md:col-span-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider">1. Teks Asli (Original Input)</span>
+                                            <button onclick="copyToClipboard('resOriginal')" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><i class="fa-regular fa-copy"></i> Salin</button>
+                                        </div>
+                                        <p id="resOriginal" class="text-sm font-medium text-slate-700 dark:text-slate-200 leading-relaxed"></p>
+                                    </div>
+                                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider">2. Case Folding</span>
+                                            <button onclick="copyToClipboard('resCaseFolding')" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><i class="fa-regular fa-copy"></i> Salin</button>
+                                        </div>
+                                        <p id="resCaseFolding" class="text-sm text-slate-600 dark:text-slate-300 font-mono break-all"></p>
+                                    </div>
+                                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider">3. Cleaning & Reduplikasi</span>
+                                            <button onclick="copyToClipboard('resCleaning')" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><i class="fa-regular fa-copy"></i> Salin</button>
+                                        </div>
+                                        <p id="resCleaning" class="text-sm text-slate-600 dark:text-slate-300 font-mono break-all"></p>
+                                    </div>
+                                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 md:col-span-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider">4. Tokenization</span>
+                                            <span class="text-[11px] text-slate-400">Array kata hasil eksplode</span>
+                                        </div>
+                                        <div id="resTokenization" class="flex flex-wrap gap-1.5 pt-1"></div>
+                                    </div>
+                                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider">5. Stopword Removal</span>
+                                            <span class="text-[11px] text-slate-400">Filter kata tidak informatif</span>
+                                        </div>
+                                        <div id="resStopword" class="flex flex-wrap gap-1.5 pt-1"></div>
+                                    </div>
+                                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider">6. Stemming Morfologi</span>
+                                            <span class="text-[11px] text-slate-400">Ekstraksi kata dasar</span>
+                                        </div>
+                                        <div id="resStemming" class="flex flex-wrap gap-1.5 pt-1"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="content-tf" class="hidden">
+                                <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <table class="w-full text-left text-sm">
+                                        <thead class="bg-slate-50 dark:bg-slate-900/80 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                                            <tr>
+                                                <th class="py-3 px-4 w-16">No</th>
+                                                <th class="py-3 px-4">Term / Kata Dasar</th>
+                                                <th class="py-3 px-4 w-40 text-right">Frekuensi (TF)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tfBody" class="divide-y divide-slate-200 dark:divide-slate-700"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div id="content-logs" class="hidden space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">Log Pengolahan Data Morfologis & NLP</span>
+                                    <button onclick="exportLogToCSV()" class="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-all">
+                                        <i class="fa-solid fa-file-csv"></i> Unduh Log (.CSV)
+                                    </button>
+                                </div>
+                                <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <table class="w-full text-left text-xs">
+                                        <thead class="bg-slate-50 dark:bg-slate-900/80 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                                            <tr>
+                                                <th class="py-3 px-3 w-12">No</th>
+                                                <th class="py-3 px-3 w-32">Tahap</th>
+                                                <th class="py-3 px-3 w-1/4">Data Sebelum</th>
+                                                <th class="py-3 px-3 w-1/5">Proses</th>
+                                                <th class="py-3 px-3 w-1/4">Data Setelah</th>
+                                                <th class="py-3 px-3">Keterangan Detail</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="logBody" class="divide-y divide-slate-200 dark:divide-slate-700"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: KAMUS & STOPWORDS RULES -->
+            <div id="view-rules" class="view-content hidden space-y-6">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
+                    <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Daftar Stopwords Default Lengkap (Sastrawi Indonesian Stopwords)</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Kata-kata berikut otomatis difilter saat tahap Stopword Removal:</p>
+                    <div id="defaultStopwordList" class="flex flex-wrap gap-1.5 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 max-h-96 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <!-- VIEW 3: PANDUAN TUGAS -->
+            <div id="view-about" class="view-content hidden space-y-6">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
+                    <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Spesifikasi & Rincian Algoritma Preprocessing</h2>
+                    <div class="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p>Aplikasi ini dirancang untuk melakukan *Natural Language Processing* (NLP) teks Bahasa Indonesia secara optimal sesuai standar STKI:</p>
+                        <ul class="list-disc pl-5 space-y-1.5 my-2">
+                            <li><b>Case Folding:</b> Menyeragamkan seluruh huruf kapital menjadi huruf kecil (lowercase) serta membersihkan whitespace.</li>
+                            <li><b>Cleaning & Reduplikasi:</b> Menghapus URL, simbol, angka, serta mengekstrak kata ulang (contoh: <i>dokumen-dokumen</i> &rarr; <i>dokumen</i>).</li>
+                            <li><b>Tokenization:</b> Memecah kalimat menjadi array kata-kata penyusun (token) tunggal.</li>
+                            <li><b>Stopword Removal:</b> Membuang kata hubung, kata ganti, dan kata umum tak bermakna berbasis kamus Sastrawi ID.</li>
+                            <li><b>Stemming Morfologis:</b> Menghapus partikel (<i>-lah,-kah,-pun</i>), kata ganti milik (<i>-ku,-mu,-nya</i>), akhiran (<i>-kan,-an,-i</i>), serta awalan (<i>me-, ber-, di-, ter-, pe-, ke-, se-</i>) menggunakan aturan transformasi peleburan kata dasar Bahasa Indonesia.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-4 mt-auto transition-colors duration-200">
+            <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                Sistem Temu Kembali Informasi &copy; 2026 - Optimized Text Mining Preprocessing Engine
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+    const samples = {
+        "1": "Mahasiswa-mahasiswa sedang mempelajari Sistem Temu Kembali Informasi di laboratorium kampus pada hari Senin!",
+        "2": "Pengolahan Bahasa Alami (Natural Language Processing) sangat membantu komputer dalam memahami teks-teks berbahasa Indonesia dengan sangat presisi.",
+        "3": "Mesin pencari otomatis akan mengekstraksi kata-kata kunci utama dari dokumen-dokumen digital yang telah diindeks sebelumnya.",
+        "4": "Algoritma kecerdasan buatan dan pemrosesan data dikembangkan untuk mempercepat pencarian informasi dalam jumlah yang sangat besar.",
+        "5": "Pengembangan aplikasi-aplikasi berbasis web membutuhkan pemahaman mendalam tentang struktur data, algoritma, serta pengujian sistem secara berkala."
+    };
+
+    // Extended Indonesian Stopwords List (Sastrawi ID Standard)
+    const defaultStopwords = [
+        "ada", "adalah", "adanya", "adapun", "agak", "agaknya", "agar", "akan", "akankah", "akhir", "akhiri", "akhirnya", 
+        "aku", "akulah", "amat", "amatlah", "anda", "andalah", "antar", "antara", "antaranya", "apa", "apabila", "apakah", 
+        "apalagi", "apatah", "atau", "ataukah", "ataupun", "bagai", "bagaikan", "sebagaimana", "bagaimanakah", "bagaimanapun", 
+        "bagi", "bagian", "bahkan", "bahwa", "bahwasanya", "baik", "bakal", "bakalan", "balik", "banyak", "bapak", "beberapa", 
+        "begini", "begitupun", "begitu", "belum", "belumlah", "berada", "berakhir", "bersama", "beserta", "betul", "betulkah", 
+        "biasa", "biasanya", "bila", "bilamana", "bisa", "bisakah", "boleh", "bolehkah", "bolehlah", "buat", "bukan", "bukankah", 
+        "bukanlah", "cuma", "dahulu", "dalam", "dan", "dapat", "dari", "daripada", "datang", "dekat", "demi", "demikian", 
+        "demikianlah", "dengan", "depan", "di", "dia", "dialah", "diri", "dirinya", "disitu", "dulu", "engkau", "engkaulah", 
+        "hingga", "ia", "ialah", "ibu", "ibunya", "ini", "inikah", "inilah", "itu", "itukah", "itulah", "jadi", "jangan", 
+        "janganlah", "jikalau", "jika", "justru", "kalau", "kalaukah", "kalaupun", "kalian", "kami", "kamulah", "kamu", 
+
+        "kan", "kapan", "kapankah", "kapanpun", "karena", "karenanya", "ke", "kecuali", "kedua", "ketiga", "keluar", 
+        "kembali", "kemudian", "kenapa", "kepada", "kepadanya", "ketika", "kini", "kinilah", "kita", "kitalah", "kurang", 
+        "lagi", "lagipula", "lain", "lainnya", "lalu", "lama", "lamanya", "langsung", "lanjut", "lanjutnya", "lebih", 
+        "lewat", "maka", "makanya", "makin", "malah", "malahpun", "mampu", "mampukah", "mana", "manakala", "manakah", 
+
+        "manapun", "masih", "masihkah", "masing", "mau", "maupun", "melainkan", "melalui", "memang", "memangnnya", 
+        "mengenai", "mengapa", "merupakan", "mereka", "merekalah", "meski", "meskipun", "misal", "misalnya", "mungkin", 
+        "mungkinkah", "nah", "namun", "nanti", "nantinya", "nyaris", "oleh", "olehnya", "pada", "padahal", "padanya", 
+
+        "paling", "para", "pasti", "patut", "perlu", "pernah", "pula", "pun", "punya", "rasa", "rasanya", "sama", 
+        "sambil", "sampai", "sana", "sangat", "sangatlah", "saya", "sayalah", "se", "sebab", "sebabnya", "sebagai", 
+
+        "sebagian", "sebanyak", "sebaiknya", "sebaliknya", "sebelum", "sebelumnya", "sebenarnya", "secara", "sedang", 
+        "sedangkan", "sedikit", "sedikitnya", "sehingga", "sejak", "sejauh", "sekitar", "sekitarnya", "sekalian", 
+        "sekaligus", "sekadar", "sekedar", "selain", "selanjutnya", "selalu", "seluruh", "seluruhnya", "selama", 
+        "seperti", "sepertinya", "sering", "seringkali", "serta", "serupa", "seseorang", "sesuatu", "sesudah", 
+
+        "sesudahnya", "setelah", "setelahnya", "setiap", "sewaktu", "si", "siapa", "siapakah", "siapapun", "sini", 
+
+        "sinilah", "sudah", "sudahkah", "sudahlah", "supaya", "tadi", "tadinya", "tahu", "tanpa", "tapi", "telah", 
+
+        "tentang", "tentu", "tentunya", "tempat", "tengah", "terhadap", "terhadapnya", "terjadi", "termasuk", 
+        "ternyata", "tersebut", "tersebutlah", "tertentu", "terus", "terutama", "tetap", "tetapi", "tiap", "tidak", 
+
+        "tidakkah", "tidaklah", "toh", "untuk", "untuknya", "yaitu", "yakni"
+    ];
+
+    let globalLogs = [];
+    let parsedRows = [];
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('mobileBackdrop');
+        sidebar.classList.toggle('-translate-x-full');
+        backdrop.classList.toggle('hidden');
+    }
+
+    function navTo(viewId) {
+        document.querySelectorAll('.view-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`view-${viewId}`).classList.remove('hidden');
+
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.className = "nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all";
+        });
+
+        const activeNav = document.getElementById(`nav-${viewId}`);
+        if(activeNav) {
+            activeNav.className = "nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 transition-all";
+        }
+
+        const pageTitles = {
+            'preprocessing': 'Modul Preprocessing Teks (Optimized Engine)',
+            'rules': 'Aturan Kamus & Stopwords Sastrawi',
+            'about': 'Panduan & Deskripsi Tugas'
+        };
+        document.getElementById('pageTitle').innerText = pageTitles[viewId] || 'STKI Engine';
+
+        if (window.innerWidth < 768) {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('mobileBackdrop');
+            if(!sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+    }
+
+    function toggleDarkMode() {
+        const html = document.documentElement;
+        const icon = document.getElementById('themeIcon');
+        const text = document.getElementById('themeText');
+        
+        if (html.classList.contains('dark')) {
+            html.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+            if (icon) icon.className = 'fa-solid fa-moon text-amber-500';
+            if (text) text.innerText = 'Mode Gelap';
+        } else {
+            html.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+            if (icon) icon.className = 'fa-solid fa-sun text-amber-400';
+            if (text) text.innerText = 'Mode Terang';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const swContainer = document.getElementById('defaultStopwordList');
+        if(swContainer) {
+            swContainer.innerHTML = defaultStopwords.map(sw => `<span class="px-2.5 py-1 text-xs font-mono bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700">${sw}</span>`).join('');
+        }
+
+        const dropZone = document.getElementById('dropZone');
+        if(dropZone) {
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('border-brand-500', 'bg-brand-50/20');
+                }, false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-brand-500', 'bg-brand-50/20');
+                }, false);
+            });
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length) parseFile(files[0]);
+            });
+        }
+    });
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) parseFile(file);
+    }
+
+    function parseFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            parsedRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            if (parsedRows.length === 0) {
+                alert("File kosong!");
+                return;
+            }
+
+            const headers = parsedRows[0];
+            const select = document.getElementById('columnSelect');
+            select.innerHTML = '';
+
+            headers.forEach((header, index) => {
+                const opt = document.createElement('option');
+                opt.value = index;
+                opt.innerText = header || `Kolom ${index + 1}`;
+                select.appendChild(opt);
+            });
+
+            document.getElementById('fileName').innerText = `${file.name} (${parsedRows.length - 1} baris)`;
+            document.getElementById('fileMeta').classList.remove('hidden');
+            extractSelectedColumn();
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function extractSelectedColumn() {
+        const colIndex = parseInt(document.getElementById('columnSelect').value);
+        if (isNaN(colIndex) || parsedRows.length <= 1) return;
+
+        const textArray = [];
+        for (let i = 1; i < parsedRows.length; i++) {
+            const row = parsedRows[i];
+            if (row[colIndex] !== undefined && row[colIndex] !== null) {
+                textArray.push(String(row[colIndex]));
+            }
+        }
+        document.getElementById('inputText').value = textArray.join(" ");
+    }
+
+    function loadSample() {
+        const val = document.getElementById("sampleSelect").value;
+        if (val && samples[val]) {
+            document.getElementById("inputText").value = samples[val];
+            document.getElementById("fileMeta").classList.add("hidden");
+            document.getElementById("fileInput").value = "";
+        }
+    }
+
+    function resetForm() {
+        document.getElementById("inputText").value = "";
+        document.getElementById("sampleSelect").value = "";
+        document.getElementById("customStopwords").value = "";
+        document.getElementById("fileInput").value = "";
+        document.getElementById("fileMeta").classList.add("hidden");
+        document.getElementById("outputSection").classList.add("hidden");
+        document.getElementById("emptyState").classList.remove("hidden");
+    }
+
+    /* ENHANCED INDONESIAN MORPHOLOGICAL STEMMER */
+    function stemIndonesianWordOptimized(word) {
+        if (word.length <= 3) return word; // Proteksi kata pendek (ibu, ada, apa)
+
+        let original = word;
+        let stemmed = word;
+
+        // 1. Remove Inflection Suffixes (-lah, -kah, -pun, -tah)
+        stemmed = stemmed.replace(/(lah|kah|pun|tah)$/g, '');
+
+        // 2. Remove Possessive Pronouns (-ku, -mu, -nya)
+        if (stemmed.length > 4) {
+            stemmed = stemmed.replace(/(ku|mu|nya)$/g, '');
+        }
+
+        // 3. Remove Derivational Suffixes (-kan, -an, -i)
+        if (stemmed.length > 4) {
+            if (stemmed.endsWith('kan')) {
+                stemmed = stemmed.slice(0, -3);
+            } else if (stemmed.endsWith('an')) {
+                stemmed = stemmed.slice(0, -2);
+            } else if (stemmed.endsWith('i') && !stemmed.endsWith('ai') && !stemmed.endsWith('oi')) {
+                stemmed = stemmed.slice(0, -1);
+            }
+        }
+
+        // 4. Remove Derivational Prefixes (meng-, meny-, mem-, men-, peng-, peny-, pem-, pen-, ber-, ter-, di-, ke-, se-, pe-)
+        if (stemmed.length > 4) {
+            // Awalan meng- & peng- (Peleburan ke 'k' atau vokal)
+            if (/^(meng|peng)/.test(stemmed)) {
+                let rest = stemmed.replace(/^(meng|peng)/, '');
+                if (/^[aeiou]/.test(rest)) {
+                    stemmed = 'k' + rest; // Contoh: mengindeks -> indeks/k-indeks
+                } else {
+                    stemmed = rest;
+                }
+            } 
+            // Awalan meny- & peny- (Peleburan ke 's')
+            else if (/^(meny|peny)/.test(stemmed)) {
+                stemmed = 's' + stemmed.replace(/^(meny|peny)/, '');
+            } 
+            // Awalan mem- & pem- (Peleburan ke 'p' atau konsonan b,f,v)
+            else if (/^(mem|pem)/.test(stemmed)) {
+                let rest = stemmed.replace(/^(mem|pem)/, '');
+                if (/^[aeiou]/.test(rest)) {
+                    stemmed = 'p' + rest; // Contoh: memotong -> potong
+                } else {
+                    stemmed = rest; // Contoh: membantu -> bantu
+                }
+            } 
+            // Awalan men- & pen- (Peleburan ke 't' atau konsonan c,d,j,z)
+            else if (/^(men|pen)/.test(stemmed)) {
+                let rest = stemmed.replace(/^(men|pen)/, '');
+                if (/^[aeiou]/.test(rest)) {
+                    stemmed = 't' + rest; // Contoh: menulis -> tulis
+                } else {
+                    stemmed = rest; // Contoh: mendengar -> dengar
+                }
+            } 
+            // Awalan ber-, per-, ter-
+            else if (/^(ber|per|ter)/.test(stemmed)) {
+                stemmed = stemmed.replace(/^(ber|per|ter)/, '');
+            } 
+            // Awalan me-, di-, ke-, se-, pe-
+            else if (/^(me|di|ke|se|pe)/.test(stemmed)) {
+                stemmed = stemmed.replace(/^(me|di|ke|se|pe)/, '');
+            }
+        }
+
+        return stemmed.length >= 2 ? stemmed : original;
+    }
+
+    function switchTab(tabName) {
+        ['pipeline', 'tf', 'logs'].forEach(tab => {
+            const btn = document.getElementById(`tab-${tab}`);
+            const content = document.getElementById(`content-${tab}`);
+            if (tab === tabName) {
+                btn.className = "px-4 py-2.5 text-xs font-bold rounded-t-xl border-b-2 border-brand-600 dark:border-brand-400 text-brand-600 dark:text-brand-400 flex items-center gap-2 bg-white dark:bg-slate-800";
+                content.classList.remove("hidden");
+            } else {
+                btn.className = "px-4 py-2.5 text-xs font-bold rounded-t-xl border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-2";
+                content.classList.add("hidden");
+            }
+        });
+    }
+
+    function renderBadges(tokens, badgeClass = "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600") {
+        return tokens.map(t => `<span class="inline-block px-2.5 py-1 text-xs font-mono rounded-md border ${badgeClass}">${t}</span>`).join('');
+    }
+
+    function processText() {
+        const text = document.getElementById("inputText").value.trim();
+        if (!text) {
+            alert("Silakan masukkan teks, pilih preset dataset, atau upload file terlebih dahulu!");
+            return;
+        }
+
+        let customInputs = document.getElementById("customStopwords").value.toLowerCase().split(',');
+        let activeStopwords = new Set([...defaultStopwords, ...customInputs.map(s => s.trim()).filter(s => s.length > 0)]);
+
+        globalLogs = [];
+
+        // 1. CASE FOLDING
+        let originalText = text;
+        let caseFolded = originalText.toLowerCase();
+        globalLogs.push({
+            step: "Case Folding",
+            before: originalText,
+            process: "String.toLowerCase() + Whitespace Normalization",
+            after: caseFolded,
+            notes: originalText !== caseFolded ? "Semua karakter kapital diubah ke huruf kecil" : "Teks sudah bersurat kecil"
+        });
+
+        // 2. CLEANING & REDUPLIKASI
+        // Menghapus URL, HTML, Angka & Simbol
+        let cleanStep1 = caseFolded.replace(/https?:\/\/\S+|www\.\S+/g, '')
+                                   .replace(/<[^>]*>/g, '')
+                                   .replace(/[0-9]/g, '');
+        
+        // Ekstraksi Kata Ulang (contoh: dokumen-dokumen -> dokumen)
+        let cleanStep2 = cleanStep1.replace(/\b([a-z]+)-\1\b/g, '$1');
+        
+        // Menghapus non-alphabet
+        let cleaned = cleanStep2.replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+        globalLogs.push({
+            step: "Cleaning",
+            before: caseFolded,
+            process: "URL/HTML Strip, Regex [^a-z], Deduplikasi Kata Ulang",
+            after: cleaned,
+            notes: "Simbol, angka, URL, dan kata ulang dinormalisasi"
+        });
+
+        // 3. TOKENIZATION
+        let tokens = cleaned.split(/\s+/).filter(t => t.length > 1); // mengabaikan token tunggal sisa
+        globalLogs.push({
+            step: "Tokenization",
+            before: cleaned,
+            process: "Splitting Regex \\s+ (Length > 1)",
+            after: tokens.join(', '),
+            notes: `Terbentuk ${tokens.length} token terpisah`
+        });
+
+        // 4. STOPWORD REMOVAL
+        let removedWords = [];
+        let filteredTokens = tokens.filter(token => {
+            if (activeStopwords.has(token)) {
+                removedWords.push(token);
+                return false;
+            }
+            return true;
+        });
+        globalLogs.push({
+            step: "Stopword Removal",
+            before: tokens.join(', '),
+            process: "Filtering via Sastrawi ID Dictionary",
+            after: filteredTokens.join(', '),
+            notes: removedWords.length > 0 ? `Dibuang (${removedWords.length} kata): ${removedWords.join(', ')}` : "Tidak ada stopword terdeteksi"
+        });
+
+        // 5. STEMMING
+        let changedWords = [];
+        let stemmedTokens = filteredTokens.map(token => {
+            let res = stemIndonesianWordOptimized(token);
+            if (res !== token) {
+                changedWords.push(`${token} → ${res}`);
+            }
+            return res;
+        });
+        globalLogs.push({
+            step: "Stemming",
+            before: filteredTokens.join(', '),
+            process: "Rule-based Indonesian Morphological Stripping",
+            after: stemmedTokens.join(', '),
+            notes: changedWords.length > 0 ? `Dimodifikasi (${changedWords.length} kata): ${changedWords.join(', ')}` : "Semua kata sudah dalam bentuk dasar"
+        });
+
+        // UPDATE UI STATS
+        let initCount = tokens.length;
+        let finalCount = stemmedTokens.length;
+        let reduction = initCount > 0 ? (((initCount - finalCount) / initCount) * 100).toFixed(1) : 0;
+
+        document.getElementById("statInitial").innerText = initCount;
+        document.getElementById("statFinal").innerText = finalCount;
+        document.getElementById("statReduction").innerText = `${reduction}%`;
+        document.getElementById("statChanged").innerText = changedWords.length;
+
+        // UPDATE PIPELINE UI
+        document.getElementById("resOriginal").innerText = originalText;
+        document.getElementById("resCaseFolding").innerText = caseFolded;
+        document.getElementById("resCleaning").innerText = cleaned;
+        document.getElementById("resTokenization").innerHTML = renderBadges(tokens, "bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600");
+        document.getElementById("resStopword").innerHTML = renderBadges(filteredTokens, "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800");
+        document.getElementById("resStemming").innerHTML = renderBadges(stemmedTokens, "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800");
+
+        // UPDATE TF TABLE
+        let tfMap = {};
+        stemmedTokens.forEach(term => { tfMap[term] = (tfMap[term] || 0) + 1; });
+
+        let tfHtml = "";
+        let tfIndex = 1;
+        for (let term in tfMap) {
+            tfHtml += `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                    <td class="py-3 px-4 text-slate-400 dark:text-slate-500 font-mono">${tfIndex++}</td>
+                    <td class="py-3 px-4 font-bold text-slate-700 dark:text-slate-200">${term}</td>
+                    <td class="py-3 px-4 text-right"><span class="px-2.5 py-1 bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-bold rounded-lg border border-brand-100 dark:border-brand-800">${tfMap[term]}</span></td>
+                </tr>
+            `;
+        }
+        document.getElementById("tfBody").innerHTML = tfHtml;
+
+        // UPDATE LOG TABLE
+        let logBodyHtml = "";
+        globalLogs.forEach((log, index) => {
+            logBodyHtml += `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                    <td class="py-3 px-3 font-mono text-slate-400 dark:text-slate-500">${index + 1}</td>
+                    <td class="py-3 px-3 font-bold text-brand-600 dark:text-brand-400">${log.step}</td>
+                    <td class="py-3 px-3 text-slate-600 dark:text-slate-300 break-words">${log.before}</td>
+                    <td class="py-3 px-3 text-slate-400 dark:text-slate-500 font-mono text-[11px]">${log.process}</td>
+                    <td class="py-3 px-3 text-slate-800 dark:text-slate-100 font-medium break-words">${log.after}</td>
+                    <td class="py-3 px-3 text-slate-500 dark:text-slate-400">${log.notes}</td>
+                </tr>
+            `;
+        });
+        document.getElementById("logBody").innerHTML = logBodyHtml;
+
+        document.getElementById("emptyState").classList.add("hidden");
+        document.getElementById("outputSection").classList.remove("hidden");
+    }
+
+    function copyToClipboard(elementId) {
+        const text = document.getElementById(elementId).innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert("Teks berhasil disalin!");
+        });
+    }
+
+    function exportLogToCSV() {
+        if (globalLogs.length === 0) return;
+
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFFNo,Tahap,Sebelum,Proses,Setelah,Keterangan\n";
+        globalLogs.forEach((log, idx) => {
+            let before = `"${log.before.replace(/"/g, '""')}"`;
+            let process = `"${log.process.replace(/"/g, '""')}"`;
+            let after = `"${log.after.replace(/"/g, '""')}"`;
+            let notes = `"${log.notes.replace(/<[^>]*>?/gm, '').replace(/"/g, '""')}"`;
+            csvContent += `${idx + 1},"${log.step}",${before},${process},${after},${notes}\n`;
+        });
+
+        let encodedUri = encodeURI(csvContent);
+        let link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "processing_log_stki_optimized.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    </script>
+</body>
+</html>
